@@ -32,7 +32,7 @@ jobs:
 
         - name: Install podman remote
           run: |
-            sudo apt-get install -y podman
+            sudo apt-get install -y podman podman-remote
             sudo apt-get install -y jq
 
         - name: jq parse the terraform state for the public ip
