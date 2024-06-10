@@ -14,7 +14,7 @@ env:
 
 jobs:
   podman-remote:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
         - uses: hashicorp/setup-terraform@v3
 
