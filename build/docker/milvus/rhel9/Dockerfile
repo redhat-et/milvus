@@ -14,19 +14,19 @@ FROM registry.access.redhat.com/ubi9/ubi:9.4-947.1717074712
 
 ARG TARGETARCH
 
+# assumes repo of codeready-builder-for-rhel-9-<arch>
 RUN dnf install -y wget libgomp libaio libatomic
 
-# RUN subscription-manager register --auto-attach
-# install openblas-devel
-RUN dnf copr enable @copr/PyPI epel-9
-RUN 
-RUN dnf -y install dnf-plugins-core && \
-    # Could not find a version of openblas-devel on RHEL
-    dnf -y install openblas
+COPY build/docker/milvus/rhel9/install-openblas.sh /home/install-openblas.sh
+RUN chmod +x /home/install-openblas.sh
+RUN TARGETARCH=$TARGETARCH /home/install-openblas.sh
+
+# Remove cache for image sizing
+RUN rm -rf /var/cache/dnf/*
 
 COPY ./bin/ /milvus/bin/
 
-COPY ./configs/ /milvus/configs/
+COPY ./configs/ /milvus/configs/ 
 
 COPY ./lib/ /milvus/lib/
 

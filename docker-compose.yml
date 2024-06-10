@@ -16,6 +16,8 @@ services:
       dockerfile: build/docker/builder/cpu/${OS_NAME}/Dockerfile
       args:
         TARGETARCH: ${IMAGE_ARCH}
+        SUBMAN_USER: ${SUBMAN_USER}
+        SUBMAN_PASS: ${SUBMAN_PASS}
       cache_from:
         - ${IMAGE_REPO}/milvus-env:${OS_NAME}-${LATEST_DATE_VERSION}
     platform: linux/${IMAGE_ARCH}
@@ -31,6 +33,8 @@ services:
       MINIO_ADDRESS: ${MINIO_ADDRESS}
       CONAN_USER_HOME: /home/milvus
       AZURE_STORAGE_CONNECTION_STRING: ${AZURITE_CONNECTION_STRING}
+      SUBMAN_USER: ${SUBMAN_USER}
+      SUBMAN_PASS: ${SUBMAN_PASS}
     volumes: &builder-volumes
       - .:/go/src/github.com/milvus-io/milvus:delegated
       - ${DOCKER_VOLUME_DIRECTORY:-.docker}/${IMAGE_ARCH}-${OS_NAME}-ccache:/ccache:delegated
