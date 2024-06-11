@@ -71,6 +71,7 @@ resource "aws_instance" "builder" {
       "sudo dnf -y install container-tools podman",
       "sudo subscription-manager config --rhsm.manage_repos=1",
       "systemctl enable --now podman.socket --user",
+      "sudo loginctl enable-linger ec2-user",
     ]
   }
   connection {
