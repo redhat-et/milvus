@@ -1,0 +1,56 @@
+name: AI-lab remove rhel-build
+
+on:
+  workflow_dispatch:
+
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'build/docker/builder/cpu/rhel9/**'
+      - '.github/workflows/ai-lab-remote-rhel-build.yaml'
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  TF_VAR_vpc_id: ${{ secrets.VPC_ID }}
+  TF_VAR_rh_access: ${{ secrets.RH_ACCESS }}
+  TF_VAR_rh_org: ${{ secrets.RH_ORG }}
+  TF_VAR_ami_id: ${{ secrets.AMI_ID }}
+
+jobs:
+  podman-remote:
+    runs-on: ubuntu-24.04
+    steps:
+        - uses: hashicorp/setup-terraform@v3
+
+        - name: Checkout code
+          uses: actions/checkout@v2
+
+        - name: sshkeygen for ansible
+          run: ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
+
+        - name: Terraform Init
+          run: terraform init
+
+        - name: Terraform Apply
+          run: terraform apply -auto-approve
+
+        - name: Terraform Output
+          id: terraform-output
+          run: |
+            echo "id=$(terraform output id | xargs)" >> $GITHUB_OUTPUT
+            echo "url=$(terraform output host | xargs)" >> $GITHUB_OUTPUT
+            echo "ssh_public_key=$(terraform output ssh_public_key | xargs)" >> $GITHUB_OUTPUT
+            echo "pem_filename=$(terraform output pem_filename | xargs)" >> $GITHUB_OUTPUT
+          working-directory: terraform-test-environment-module
+
+        - name: Install podman remote
+          run: |
+            sudo apt-get install -y podman podman-remote
+            sudo apt-get install -y jq
+
+        - name: Terraform Destroy
+          if: always()
+          run: terraform destroy -auto-approve
