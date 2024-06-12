@@ -14,10 +14,12 @@ FROM registry.access.redhat.com/ubi9/ubi:9.4-947.1717074712
 
 ARG TARGETARCH
 
-# assumes repo of codeready-builder-for-rhel-9-<arch>
 RUN dnf install -y wget libgomp libaio libatomic
 
 USER 0
+
+# Assumes you have a valid subman subscription
+    # This gets used for the codeready-builder-for-rhel-9-<arch> stream for openblas-devel 
 
 COPY build/docker/milvus/rhel9/install-openblas.sh /home/install-openblas.sh
 RUN chmod +x /home/install-openblas.sh
