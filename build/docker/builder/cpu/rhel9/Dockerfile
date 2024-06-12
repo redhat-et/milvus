@@ -36,19 +36,20 @@ RUN dnf install -y make cmake automake gcc gcc-c++ \
 
 RUN alias python3='python3.11'
 
-# taken from .env file
-RUN subscription-manager register --username $SUBMAN_USER --password $SUBMAN_PASS
+# Assumes you have a valid subman subscription
 
 COPY build/docker/builder/cpu/rhel9/install-rpms.sh /root/install-rpms.sh
 RUN chmod +x /root/install-rpms.sh
-RUN TARGETARCH=$TARGETARCH /root/install-rpms.sh
+RUN /root/install-rpms.sh
 
 # Install conan and Go
 RUN python3.11 -m pip install conan==1.61.0
 
 COPY build/docker/builder/cpu/rhel9/install-go.sh /root/install-go.sh
 RUN chmod +x /root/install-go.sh
-RUN TARGETARCH=$TARGETARCH /root/install-go.sh
+RUN source /root/install-go.sh
+
+RUN mkdir -p /.cache/go-build && chmod -R 777 /.cache/go-build
 
 RUN curl https://sh.rustup.rs -sSf | \
     sh -s -- --default-toolchain=1.73 -y
@@ -57,14 +58,12 @@ ENV PATH=/root/.cargo/bin:/usr/local/bin:/usr/local/go/bin:$PATH
 
 ENV VCPKG_FORCE_SYSTEM_BINARIES 1
 
-# RUN mkdir /opt/vcpkg &&  \
-#     wget -qO- vcpkg.tar.gz https://github.com/microsoft/vcpkg/archive/master.tar.gz | tar --strip-components=1 -xz -C /opt/vcpkg && \
-#     rm -rf vcpkg.tar.gz
-COPY --from=vcpkg-installer /opt/vcpkg /opt/vcpkg
+RUN mkdir /opt/vcpkg &&  \
+    wget -qO- vcpkg.tar.gz https://github.com/microsoft/vcpkg/archive/master.tar.gz | tar --strip-components=1 -xz -C /opt/vcpkg && \
+    rm -rf vcpkg.tar.gz
 
 COPY --from=vcpkg-installer /root/.cache/vcpkg /root/.cache/vcpkg
 COPY --chown=0:0 build/docker/builder/entrypoint.sh /
 
-USER 1001
 ENTRYPOINT [ "/entrypoint.sh" ]
 CMD ["tail", "-f", "/dev/null"]

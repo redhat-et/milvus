@@ -17,6 +17,8 @@ ARG TARGETARCH
 # assumes repo of codeready-builder-for-rhel-9-<arch>
 RUN dnf install -y wget libgomp libaio libatomic
 
+USER 0
+
 COPY build/docker/milvus/rhel9/install-openblas.sh /home/install-openblas.sh
 RUN chmod +x /home/install-openblas.sh
 RUN TARGETARCH=$TARGETARCH /home/install-openblas.sh
@@ -38,6 +40,7 @@ ENV MALLOC_CONF=background_thread:true
 # Add Tini
 ADD https://github.com/krallin/tini/releases/download/v0.19.0/tini-$TARGETARCH /tini
 RUN chmod +x /tini
-ENTRYPOINT ["/tini", "--"]
 
+USER 1001
+ENTRYPOINT ["/tini", "--"]
 WORKDIR /milvus

@@ -35,7 +35,11 @@ else
 fi
 
 export PATH="$GOPATH/bin:$GOROOT/bin:$PATH"
+export GOPROXY="https://proxy.golang.org,direct"
+export GOSUMDB="sum.golang.org"
+export GOMODCACHE="$GOPATH/pkg/mod"
+export GOCACHE="$GOPATH/.cache"
 
-mkdir -p "$GOPATH/src" "$GOPATH/bin"
+mkdir -p "$GOPATH/src" "$GOPATH/bin" "$GOPATH/pkg" "$GOCACHE"
 go clean --modcache
 chmod -R 777 "$GOPATH" && chmod -R a+w $(go env GOTOOLDIR)
