@@ -19,8 +19,8 @@ RUN dnf install -y wget libgomp libaio libatomic
 USER 0
 
 # Assumes you have a valid subman subscription
-    # This gets used for the codeready-builder-for-rhel-9-<arch> stream for openblas-devel 
-
+RUN subscription-manager register --auto-attach
+# This gets used for the codeready-builder-for-rhel-9-<arch> stream for openblas-devel 
 COPY build/docker/milvus/rhel9/install-openblas.sh /home/install-openblas.sh
 RUN chmod +x /home/install-openblas.sh
 RUN TARGETARCH=$TARGETARCH /home/install-openblas.sh

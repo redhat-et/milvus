@@ -24,8 +24,8 @@ RUN /opt/vcpkg/bootstrap-vcpkg.sh -disableMetrics && \
 FROM registry.access.redhat.com/ubi9/ubi:9.4-947.1717074712
 
 ARG TARGETARCH
-ARG SUBMAN_USER
-ARG SUBMAN_PASS
+# ARG SUBMAN_USER
+# ARG SUBMAN_PASS
 USER 0
 
 # basic deps
@@ -36,9 +36,9 @@ RUN dnf install -y make cmake automake gcc gcc-c++ \
 
 RUN alias python3='python3.11'
 
-# Assumes you have a valid subman subscription
-    # This gets used for the codeready-builder-for-rhel-9-<arch> stream for openblas-devel
-
+# Assumes you have a valid subman subscription at the host machine
+# RUN subscription-manager register --username $SUBMAN_USER --password $SUBMAN_PASS --force
+# This gets used for the codeready-builder-for-rhel-9-<arch> stream for openblas-devel
 COPY build/docker/builder/cpu/rhel9/install-rpms.sh /root/install-rpms.sh
 RUN chmod +x /root/install-rpms.sh
 RUN /root/install-rpms.sh
