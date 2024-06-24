@@ -1,5 +1,3 @@
-version: '3.5'
-
 x-ccache: &ccache
   CCACHE_COMPILERCHECK: content
   CCACHE_COMPRESS: 1
@@ -16,6 +14,8 @@ services:
       dockerfile: build/docker/builder/cpu/${OS_NAME}/Dockerfile
       args:
         TARGETARCH: ${IMAGE_ARCH}
+        # SUBMAN_USER: ${SUBMAN_USER}
+        # SUBMAN_PASS: ${SUBMAN_PASS}
       cache_from:
         - ${IMAGE_REPO}/milvus-env:${OS_NAME}-${LATEST_DATE_VERSION}
     platform: linux/${IMAGE_ARCH}

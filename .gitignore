@@ -31,6 +31,9 @@ docker-compose-devcontainer.yml.tmp
 # Docker generated cache file
 .docker/
 
+# Private `subscription-manager` credentials for rhel builds
+.env.rhel
+
 **/_artifacts/**
 
 # proxy
@@ -46,6 +49,7 @@ proxy-go/proxy-go
 # Compiled source
 bin/
 lib/
+configs/
 *.a
 *.so
 *.so.*

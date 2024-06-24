@@ -1,0 +1,150 @@
+---
+- name: Building rhel9-milvus
+  hosts: test_environments
+  remote_user: ec2-user
+  become: true
+  gather_facts: false
+
+# THIS RUNS ON RHEL AMI AS BUILDER FOR SUBMAN
+
+  tasks:
+
+  - name: Wait until the instance is ready
+    ansible.builtin.wait_for_connection:
+    delay: 15
+    timeout: 180
+
+  - name: Gather facts for first time
+    ansible.builtin.setup:
+
+  # - name: DEBUG - sleep
+  #   ignore_unreachable: true
+  #   ansible.builtin.shell: |
+  #     sleep 600
+
+  - name: remove podman for clean docker install
+    ansible.builtin.shell: |
+      dnf -y remove \
+        docker \
+        docker-client \
+        docker-client-latest \
+        docker-common \
+        docker-latest \
+        docker-latest-logrotate \
+        docker-logrotate \
+        docker-engine \
+        podman \
+        runc
+
+  - name: setup docker server and docker compose
+    async: 1000
+    poll: 0
+    register: docker_install_result
+    ansible.builtin.shell: |
+      sudo yum install -y yum-utils
+      sudo yum-config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo
+      sudo yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      sudo systemctl start docker
+
+  - name: Check on downloading docker + docker tools
+    async_status:
+      jid: "{{ docker_install_result.ansible_job_id }}"
+    register: job_result
+    until: job_result.finished
+    retries: 25
+    delay: 10
+
+  - name: Ensure Docker is running
+    ansible.builtin.systemd:
+      name: docker
+      state: started
+      enabled: yes
+
+  - name: Install the docker-compose binary
+    ansible.builtin.shell: |
+      cd /tmp
+      export ARCH=$(uname -m)
+      if [[ "$ARCH" == "arm64" ]] || [[ "$ARCH" == "aarch64" ]]; then
+        echo "aarch64 selected"
+        curl -sLO https://github.com/docker/compose/releases/download/v2.28.0/docker-compose-linux-aarch64
+        sudo mv /tmp/docker-compose-linux-aarch64 /usr/bin/docker-compose
+      elif [[ "$ARCH" == "amd64" ]] || [[ "$ARCH" == "x86_64" ]]; then
+        echo "x86_64 selected"
+        curl -sLO https://github.com/docker/compose/releases/download/v2.28.0/docker-compose-linux-x86_64
+        sudo mv /tmp/docker-compose-linux-x86_64 /usr/bin/docker-compose
+      fi
+      chmod +x /usr/bin/docker-compose
+
+  - name: Log in to quay.io
+    community.docker.docker_login:
+      username: "{{ registry_user }}"
+      password: "{{ registry_pass }}"
+      registry: quay.io
+    
+  - name: Register to subscription manager
+    ansible.builtin.shell: |
+      subscription-manager register --username "{{ subman_user }}" --password "{{ subman_pass }}" --force
+
+  - name: Clone Git repository
+    become: false
+    ansible.builtin.git:
+      repo: https://github.com/redhat-et/milvus.git
+      dest: "/tmp/milvus"
+      version: "rhel9-milvus"  
+      clone: yes
+      update: yes
+
+  - name: DEBUG - sleep
+    ansible.builtin.shell: |
+      sleep 900
+
+  - name: Make the builder image
+    async: 1000
+    poll: 0
+    register: builder_result
+    ansible.builtin.shell: |
+      set -x
+      cd /tmp/milvus/
+      sudo su
+      echo $TARGETARCH
+      export TARGETARCH=$(uname -m)
+      echo $TARGETARCH
+      ./build/builder.sh make install
+      ls -al /tmp/milvus/
+      set +x
+
+  - name: Check on the builder image
+    async_status:
+      jid: "{{ builder_result.ansible_job_id }}"
+    register: job_result
+    until: job_result.finished
+    retries: 100
+    delay: 10
+
+  - name: Make the milvus image
+    async: 1000
+    poll: 0
+    register: milvus_result
+    ansible.builtin.shell: |
+      cd /tmp/milvus
+      ls -al /tmp/milvus
+      mv /tmp/milvus/bin /tmp/milvus/build/docker/milvus/rhel9/
+      mv /tmp/milvus/configs /tmp/milvus/build/docker/milvus/rhel9/
+      mv /tmp/milvus/lib /tmp/milvus/build/docker/milvus/rhel9/
+      /tmp/milvus/build/build_image.sh make
+
+  - name: Check on the milvus image
+    async_status:
+      jid: "{{ milvus_result.ansible_job_id }}"
+    register: job_result
+    until: job_result.finished
+    retries: 100
+    delay: 10
+
+  - name: log docker images
+    ansible.builtin.shell: |
+      docker images
+  
+  - name: DEBUG - sleep
+    ansible.builtin.shell: |
+      sleep 400
