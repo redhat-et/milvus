@@ -24,7 +24,7 @@
 
   - name: remove podman for clean docker install
     ansible.builtin.shell: |
-      sudo dnf -y remove \
+      dnf -y remove \
         docker \
         docker-client \
         docker-client-latest \
@@ -65,9 +65,11 @@
       cd /tmp
       export ARCH=$(uname -m)
       if [[ "$ARCH" == "arm64" ]] || [[ "$ARCH" == "aarch64" ]]; then
+        echo "aarch64 selected"
         curl -sLO https://github.com/docker/compose/releases/download/v2.28.0/docker-compose-linux-aarch64
         sudo mv /tmp/docker-compose-linux-aarch64 /usr/bin/docker-compose
       elif [[ "$ARCH" == "amd64" ]] || [[ "$ARCH" == "x86_64" ]]; then
+        echo "x86_64 selected"
         curl -sLO https://github.com/docker/compose/releases/download/v2.28.0/docker-compose-linux-x86_64
         sudo mv /tmp/docker-compose-linux-x86_64 /usr/bin/docker-compose
       fi
@@ -79,29 +81,36 @@
       password: "{{ registry_pass }}"
       registry: quay.io
     
+  - name: Register to subscription manager
+    ansible.builtin.shell: |
+      subscription-manager register --username "{{ subman_user }}" --password "{{ subman_pass }}" --force
+
   - name: Clone Git repository
+    become: false
     ansible.builtin.git:
       repo: https://github.com/redhat-et/milvus.git
-      dest: "/home/ec2-user/milvus"
+      dest: "/tmp/milvus"
       version: "rhel9-milvus"  
       clone: yes
       update: yes
 
   - name: DEBUG - sleep
     ansible.builtin.shell: |
-      sleep 400
+      sleep 900
 
   - name: Make the builder image
     async: 1000
     poll: 0
     register: builder_result
-    become: true
-    
     ansible.builtin.shell: |
       set -x
-      cd /home/ec2-user/milvus/
+      cd /tmp/milvus/
+      sudo su
+      echo $TARGETARCH
+      export TARGETARCH=$(uname -m)
+      echo $TARGETARCH
       ./build/builder.sh make install
-      ls -al /home/ec2-user/milvus/
+      ls -al /tmp/milvus/
       set +x
 
   - name: Check on the builder image
@@ -117,12 +126,12 @@
     poll: 0
     register: milvus_result
     ansible.builtin.shell: |
-      cd /home/ec2-user/milvus
-      ls -al /home/ec2-user/milvus
-      mv /home/ec2-user/milvus/bin /home/ec2-user/milvus/build/docker/milvus/rhel9/
-      mv /home/ec2-user/milvus/configs /home/ec2-user/milvus/build/docker/milvus/rhel9/
-      mv /home/ec2-user/milvus/lib /home/ec2-user/milvus/build/docker/milvus/rhel9/
-      sudo su && /home/ec2-user/milvus/build/build_image.sh make
+      cd /tmp/milvus
+      ls -al /tmp/milvus
+      mv /tmp/milvus/bin /tmp/milvus/build/docker/milvus/rhel9/
+      mv /tmp/milvus/configs /tmp/milvus/build/docker/milvus/rhel9/
+      mv /tmp/milvus/lib /tmp/milvus/build/docker/milvus/rhel9/
+      /tmp/milvus/build/build_image.sh make
 
   - name: Check on the milvus image
     async_status:
@@ -134,7 +143,7 @@
 
   - name: log docker images
     ansible.builtin.shell: |
-      sudo su && docker images
+      docker images
   
   - name: DEBUG - sleep
     ansible.builtin.shell: |

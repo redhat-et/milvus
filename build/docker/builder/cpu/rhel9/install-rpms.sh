@@ -15,6 +15,8 @@ else
     exit 1
 fi
 
+subscription-manager attach
+
 if [[ "$RUN_MODE" == "aarch64" ]]; then
     dnf install -y \
         https://www.rpmfind.net/linux/centos-stream/9-stream/AppStream/aarch64/os/Packages/perl-Unicode-EastAsianWidth-12.0-7.el9.noarch.rpm \
