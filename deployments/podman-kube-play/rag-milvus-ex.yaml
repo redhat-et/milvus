@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: rag-app-milvus
+spec:
+  containers:
+  - name: milvus-standalone
+    image: quay.io/redhat-et/milvus:standalone-rhel9.5
+    args: ["milvus", "run", "standalone"]
+    env:
+    - name: ETCD_DATA_DIR
+      value: /var/lib/milvus/etcd
+    - name: ETCD_USE_EMBED
+      value: true
+    - name: ETCD_CONFIG_PATH
+      value: /milvus/configs/embedEtcd.yaml
+    - name: COMMON_STORAGETYPE
+      value: local
+    volumeMounts:
+    - name: milvus-data
+      mountPath: /var/lib/milvus
+    ports:
+    - containerPort: 19530
+      hostPort: 19530
+    - containerPort: 9091
+      hostPort: 9091
+    - containerPort: 2379
+      hostPort: 2379
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 9091
+      initialDelaySeconds: 90
+      periodSeconds: 30
+      timeoutSeconds: 20
+      failureThreshold: 3
+
+  - name: rag-inference-app
+    # TODO: switch to quay.io/ai-lab once images are updated
+    image: quay.io/sallyom/rag:latest
+    ports:
+    - containerPort: 8501
+      hostPort: 8501
+    env:
+    # Adjust this as necessary
+    # See https://github.com/containers/ai-lab-recipes/tree/main/model_servers/llamacpp_python#deploy-model-service
+    # for an example of a simple llamacpp server with local model
+    - name: MODEL_ENDPOINT
+      value: http://127.0.0.1:8001
+    #- name: MODEL_ENDPOINT_BEARER
+    #  value: "xxx"
+    - name: VECTORDB_VENDOR
+      value: milvus
+    - name: VECTORDB_PORT
+      value: "19530"
+    - name: VECTORDB_HOST
+      value: "127.0.0.1"
+
+  volumes:
+  - name: milvus-data
+    hostPath:
+      # Update this if necessary
+      # /tmp/volumes/milvus must exist
+      path: /tmp/volumes/milvus
+      type: Directory
