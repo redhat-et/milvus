@@ -1,0 +1,45 @@
+name: rhel-build
+
+on:
+  workflow_dispatch:
+
+env:
+  REGISTRY: quay.io
+  IMAGE_NAME: milvus
+
+jobs:
+  rhel-build-and-push:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Remove unnecessary files
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+      - uses: actions/checkout@v4.1.7
+        with:
+          repository: sallyom/milvus
+          ref: ubi-rh-build
+
+      - name: Install qemu dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static
+
+      - name: Build Image
+        id: build_image
+        uses: redhat-actions/buildah-build@v2.13
+        with:
+          image: ${{ env.REGISTRY }}/redhat-et/${{ env.IMAGE_NAME }}
+          tags: ubi9.5
+          platforms: linux/amd64, linux/arm64
+          extra-args: |
+            --network=host
+          containerfiles: ./build/ubi/cpu/Dockerfile
+
+     #- name: Login to Registry
+     #- name: Push Image
+
